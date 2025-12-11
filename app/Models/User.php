@@ -90,5 +90,14 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(Review::class);
     }
-}
 
+    public function wallet()
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
+    public function getBalanceAttribute()
+    {
+        return $this->wallet ? $this->wallet->balance : 0;
+    }
+}

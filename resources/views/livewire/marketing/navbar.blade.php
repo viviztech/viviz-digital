@@ -168,6 +168,10 @@ new class extends Component {
                             class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white">
                             Dashboard
                         </a>
+                        <a href="/my-dashboard/wallet" wire:navigate
+                            class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white">
+                            My Wallet
+                        </a>
                         <a href="/my-library" wire:navigate
                             class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white">
                             My Library

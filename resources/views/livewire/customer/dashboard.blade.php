@@ -13,6 +13,8 @@ new class extends Component {
             'user' => $user,
             'ordersCount' => $user->orders()->where('status', 'completed')->count(),
             'wishlistCount' => $user->wishlist()->count(),
+            'walletBalance' => $user->balance, // Uses the accessor
+            'currencySymbol' => \App\Models\Setting::get('currency_symbol', '₹'),
             'recentOrders' => $user->orders()
                 ->with(['product', 'product.shop', 'downloadToken'])
                 ->where('status', 'completed')
@@ -32,58 +34,118 @@ new class extends Component {
         </div>
 
         <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <!-- Library Stat -->
-            <div class="bg-surface-elevated border border-white/10 rounded-xl p-6 hover:border-neon-purple/50 transition-colors group relative overflow-hidden">
-                <div class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <svg class="w-24 h-24 text-neon-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                </div>
-                <div class="relative z-10">
-                    <div class="text-gray-400 text-sm font-medium mb-1">My Library</div>
-                    <div class="text-3xl font-bold text-white mb-4">{{ $ordersCount }} Items</div>
-                    <a href="{{ route('customer.library') }}" class="inline-flex items-center text-neon-purple hover:text-white transition-colors text-sm font-medium">
-                        View Library
-                        <svg class="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <!-- Wallet Stat (Premium Focus) -->
+            <div class="relative overflow-hidden rounded-2xl bg-surface-elevated border border-white/10 group hover:border-green-500/50 transition-all duration-300">
+                <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                <div class="absolute -right-6 -top-6 bg-green-500/20 w-24 h-24 rounded-full blur-2xl group-hover:bg-green-500/30 transition-all"></div>
+                
+                <div class="relative p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-green-500/10 rounded-lg text-green-400 group-hover:text-green-300 transition-colors">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                        </div>
+                        <span class="text-xs font-medium text-green-400/80 uppercase tracking-wider">Available Funds</span>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h3 class="text-3xl font-display font-bold text-white tracking-tight">
+                            {{ $currencySymbol }}{{ number_format($walletBalance / 100, 2) }}
+                        </h3>
+                    </div>
+
+                    <a href="{{ route('customer.wallet') }}" class="inline-flex items-center text-sm font-bold text-green-400 group-hover:text-green-300 transition-colors">
+                        Add Funds
+                        <svg class="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Library Stat -->
+            <div class="relative overflow-hidden rounded-2xl bg-surface-elevated border border-white/10 group hover:border-neon-purple/50 transition-all duration-300">
+                <div class="absolute inset-0 bg-gradient-to-br from-neon-purple/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                
+                <div class="relative p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-neon-purple/10 rounded-lg text-neon-purple">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                        </div>
+                        <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">My Library</span>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h3 class="text-3xl font-display font-bold text-white tracking-tight">{{ $ordersCount }}</h3>
+                        <p class="text-sm text-gray-400">Purchased Items</p>
+                    </div>
+
+                    <a href="{{ route('customer.library') }}" class="inline-flex items-center text-sm font-medium text-white/60 hover:text-white transition-colors">
+                        View Collection
+                        <svg class="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </a>
                 </div>
             </div>
 
             <!-- Wishlist Stat -->
-            <div class="bg-surface-elevated border border-white/10 rounded-xl p-6 hover:border-neon-pink/50 transition-colors group relative overflow-hidden">
-                <div class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <svg class="w-24 h-24 text-neon-pink" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                </div>
-                <div class="relative z-10">
-                    <div class="text-gray-400 text-sm font-medium mb-1">Wishlist</div>
-                    <div class="text-3xl font-bold text-white mb-4">{{ $wishlistCount }} Items</div>
-                    <a href="{{ route('customer.wishlist') }}" class="inline-flex items-center text-neon-pink hover:text-white transition-colors text-sm font-medium">
+            <div class="relative overflow-hidden rounded-2xl bg-surface-elevated border border-white/10 group hover:border-neon-pink/50 transition-all duration-300">
+                <div class="absolute inset-0 bg-gradient-to-br from-neon-pink/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                
+                <div class="relative p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-neon-pink/10 rounded-lg text-neon-pink">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                        </div>
+                        <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">Wishlist</span>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h3 class="text-3xl font-display font-bold text-white tracking-tight">{{ $wishlistCount }}</h3>
+                        <p class="text-sm text-gray-400">Saved Items</p>
+                    </div>
+
+                    <a href="{{ route('customer.wishlist') }}" class="inline-flex items-center text-sm font-medium text-white/60 hover:text-white transition-colors">
                         View Wishlist
                         <svg class="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </a>
                 </div>
             </div>
 
             <!-- Profile/Account Stat -->
-            <div class="bg-surface-elevated border border-white/10 rounded-xl p-6 hover:border-neon-teal/50 transition-colors group relative overflow-hidden">
-                 <div class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <svg class="w-24 h-24 text-neon-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                </div>
-                <div class="relative z-10">
-                    <div class="text-gray-400 text-sm font-medium mb-1">Account</div>
-                    <div class="text-3xl font-bold text-white mb-4">Profile</div>
-                    <!-- Assuming a profile edit page might exist or will exist, for now basic info loop or just placeholder link -->
-                    <div class="text-sm text-gray-500 mb-2">{{ $user->email }}</div>
+            <div class="relative overflow-hidden rounded-2xl bg-surface-elevated border border-white/10 group hover:border-neon-teal/50 transition-all duration-300">
+                <div class="absolute inset-0 bg-gradient-to-br from-neon-teal/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                
+                <div class="relative p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-neon-teal/10 rounded-lg text-neon-teal">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                        <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">Account</span>
+                    </div>
                     
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-white truncate">{{ $user->name }}</h3>
+                        <p class="text-sm text-gray-400 truncate">{{ $user->email }}</p>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                         <span class="inline-flex items-center px-2 py-1 rounded-md bg-white/5 text-xs text-gray-300 border border-white/10">
+                            Member
+                        </span>
+                        <!-- Placeholder for future Edit Profile -->
+                    </div>
                 </div>
             </div>
         </div>

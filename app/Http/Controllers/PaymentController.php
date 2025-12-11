@@ -69,30 +69,73 @@ class PaymentController extends Controller
                 'order' => $order,
                 'razorpayOrderId' => $razorpayOrder['id'],
                 'razorpayKey' => config('services.razorpay.key'),
-                'product' => $product
+                'product' => $product,
+                'walletBalance' => auth()->user()->balance // Uses the accessor we added earlier
             ]);
 
         } catch (\Exception $e) {
             Log::error('Payment Initiation Failed: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
 
-            // For local testing/demo purposes without valid keys, allow rendering the page with mock data
+            // ... (keep fallback)
             if (app()->environment('local')) {
-                Log::warning('Using mock checkout due to Razorpay failure in local env');
+                // ...
                 return view('payment.checkout', [
-                    'order' => $order,
-                    'razorpayOrderId' => 'order_mock_' . Str::random(10),
-                    'razorpayKey' => 'rzp_test_mock',
-                    'product' => $product
+                    // ...
+                    'walletBalance' => auth()->user()->balance
                 ]);
             }
+            return back()->with('error', 'Unable to initiate payment.');
+        }
+    }
 
-            return back()->with('error', 'Unable to initiate payment. Please try again.');
+    public function payWithWallet(Order $order)
+    {
+        if (!auth()->check() || $order->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($order->status === 'completed') {
+            return redirect()->route('payment.success', $order);
+        }
+
+        try {
+            DB::transaction(function () use ($order) {
+                $user = auth()->user();
+                $amount = $order->amount; // in cents/paise
+
+                // 1. Debit Wallet (Throws exception if insufficient)
+                $user->wallet->debit(
+                    $amount,
+                    "Purchase of {$order->product->name}",
+                    $order->order_number
+                );
+
+                // 2. Mark Order as Paid
+                $order->update([
+                    'status' => 'completed',
+                    'payment_method' => 'wallet',
+                    'payment_intent_id' => 'WALLET_' . Str::random(10)
+                ]);
+
+                // 3. Generate Token
+                $order->downloadToken()->create([
+                    'token' => Str::random(64),
+                    'expires_at' => now()->addHours(\App\Models\Setting::get('download_expiry_hours', 72)),
+                ]);
+            });
+
+            return redirect()->route('payment.success', $order);
+
+        } catch (\Exception $e) {
+            Log::error('Wallet Payment Failed: ' . $e->getMessage());
+            return back()->with('error', 'Payment failed: ' . $e->getMessage());
         }
     }
 
     public function callback(Request $request)
     {
+        // ... (keep existing Razorpay callback logic)
         $signatureStatus = $this->razorpayService->verifyPaymentSignature([
             'razorpay_order_id' => $request->razorpay_order_id,
             'razorpay_payment_id' => $request->razorpay_payment_id,
@@ -103,15 +146,19 @@ class PaymentController extends Controller
             $order = Order::where('payment_intent_id', $request->razorpay_order_id)->firstOrFail();
 
             DB::transaction(function () use ($order, $request) {
+                // Check if already paid to avoid double processing (though verifying signature is safe)
+                if ($order->status === 'completed')
+                    return;
+
                 $order->update([
                     'status' => 'completed',
-                    // potentially store payment_id in a meta field if needed
+                    'payment_method' => 'razorpay', // Explicitly set methods for reporting
                 ]);
 
                 // Generate Download Token
                 $order->downloadToken()->create([
                     'token' => Str::random(64),
-                    'expires_at' => now()->addHours(\App\Models\Setting::get('download_expiry_hours', 72)), // Configurable
+                    'expires_at' => now()->addHours(\App\Models\Setting::get('download_expiry_hours', 72)),
                 ]);
             });
 

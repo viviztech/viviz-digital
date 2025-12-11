@@ -16,7 +16,7 @@ class ShopResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
 
-    protected static ?string $navigationGroup = 'User Management';
+    protected static ?string $navigationGroup = 'Vendor Management';
 
     protected static ?int $navigationSort = 2;
 

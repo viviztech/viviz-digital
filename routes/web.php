@@ -12,6 +12,7 @@ Volt::route('/', 'marketplace.home');
 Volt::route('/my-dashboard', 'customer.dashboard')->middleware(['auth', 'verified'])->name('customer.dashboard');
 Volt::route('/my-library', 'customer.library')->middleware(['auth', 'verified'])->name('customer.library');
 Volt::route('/my-wishlist', 'customer.wishlist')->middleware(['auth', 'verified'])->name('customer.wishlist');
+Volt::route('/my-dashboard/wallet', 'customer.wallet')->middleware(['auth', 'verified'])->name('customer.wallet');
 
 
 // Auth
@@ -98,6 +99,7 @@ Route::get('/checkout/{product:slug}', [\App\Http\Controllers\PaymentController:
 Route::post('/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])->name('payment.callback');
 Route::get('/payment/success/{order}', [\App\Http\Controllers\PaymentController::class, 'success'])->name('payment.success');
 Route::get('/payment/failed', [\App\Http\Controllers\PaymentController::class, 'failed'])->name('payment.failed');
+Route::post('/payment/wallet/{order}', [\App\Http\Controllers\PaymentController::class, 'payWithWallet'])->name('payment.wallet');
 
 // Invoice Download
 Route::get('/orders/{order}/invoice', [\App\Http\Controllers\OrderController::class, 'downloadInvoice'])

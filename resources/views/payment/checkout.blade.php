@@ -32,6 +32,45 @@
 
                 <hr class="border-gray-800 mb-6">
 
+                <!-- Wallet Payment Option -->
+                <div class="mb-6 bg-gray-800 p-4 rounded-lg border border-gray-700">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm font-medium text-gray-300">Your Wallet Balance</span>
+                        <span
+                            class="text-lg font-bold text-white">{{ \App\Models\Setting::get('currency_symbol', '₹') . number_format($walletBalance / 100, 2) }}</span>
+                    </div>
+
+                    @if($walletBalance >= $order->amount)
+                        <form action="{{ route('payment.wallet', $order) }}" method="POST">
+                            @csrf
+                            <button type="submit"
+                                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                                Pay with Wallet
+                            </button>
+                        </form>
+                    @else
+                        <button disabled
+                            class="w-full flex justify-center py-3 px-4 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-400 bg-gray-800 cursor-not-allowed opacity-50">
+                            Insufficient Wallet Balance
+                        </button>
+                        <div class="mt-2 text-center">
+                            <a href="/my-dashboard/wallet" class="text-xs text-indigo-400 hover:text-indigo-300"
+                                target="_blank">Add Funds +</a>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="relative mb-6">
+                    <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                        <div class="w-full border-t border-gray-700"></div>
+                    </div>
+                    <div class="relative flex justify-center">
+                        <span class="px-2 bg-gray-900 text-sm text-gray-400">
+                            Or pay with Card / UPI
+                        </span>
+                    </div>
+                </div>
+
                 <form action="{{ route('payment.callback') }}" method="POST" id="razorpay-form">
                     @csrf
                     <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
@@ -40,7 +79,7 @@
 
                     <button id="rzp-button1"
                         class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                        Pay Now
+                        Pay with Razorpay
                     </button>
                     <p class="mt-3 text-center text-xs text-gray-500">
                         Secured by Razorpay
