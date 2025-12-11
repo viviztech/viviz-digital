@@ -168,7 +168,7 @@
                         @endif
                     </div>
                 </div>
-                </div>
+
 
                 <!-- Product Reviews -->
                 <livewire:marketplace.product-reviews :product="$product" />
@@ -235,7 +235,8 @@
                                 <div class="flex-1 min-w-0">
                                     <h4
                                         class="text-sm font-bold text-gray-200 truncate group-hover:text-white transition-colors">
-                                        {{ $recent->name }}</h4>
+                                        {{ $recent->name }}
+                                    </h4>
                                     <p class="text-xs text-gray-500 mt-1 truncate">{{ $recent->shop->name }}</p>
                                     <p class="text-sm font-bold text-neon-purple mt-2">{{ $recent->formatted_price }}</p>
                                 </div>

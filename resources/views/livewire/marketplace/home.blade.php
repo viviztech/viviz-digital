@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use function Livewire\Volt\{state, computed, mount};
 
-state(['products' => [], 'categories' => [], 'selectedCategory' => 'all', 'wishlistIds' => [], 'search' => '']);
+state(['products' => [], 'categories' => [], 'selectedCategory' => 'all', 'wishlistIds' => [], 'search' => '', 'expandedTerms' => []]);
 
 mount(function () {
     $this->categories = Category::where('is_active', true)->orderBy('sort_order')->get();
@@ -22,11 +22,12 @@ mount(function () {
     }
 });
 
-$updateSearch = #[On('update-search')] function($search) {
+$updateSearch = #[On('update-search')] function ($search) {
     $this->search = $search;
+    $this->expandedTerms = []; // Reset
 };
 
-$updateCategory = #[On('update-category')] function($category) {
+$updateCategory = #[On('update-category')] function ($category) {
     $this->selectedCategory = $category;
 };
 
@@ -42,14 +43,36 @@ $filteredProducts = computed(function () {
         $items = $items->filter(fn($product) => optional($product->category)->slug === $this->selectedCategory);
     }
 
-    // Filter by Search
+    // Filter by Search (Smart Semantic Search)
     if (!empty($this->search)) {
         $term = strtolower($this->search);
-        $items = $items->filter(
-            fn($product) =>
-            str_contains(strtolower($product->name), $term) ||
-            str_contains(strtolower($product->description), $term)
-        );
+
+        // Expand query if not already expanded
+        if (empty($this->expandedTerms)) {
+            try {
+                $service = new \App\Services\GeminiService();
+                $this->expandedTerms = $service->expandSearchQuery($term);
+            } catch (\Exception $e) {
+                // Fallback to basic search
+                $this->expandedTerms = [$term];
+            }
+        }
+
+        $searchTerms = array_map('strtolower', $this->expandedTerms);
+
+        $items = $items->filter(function ($product) use ($searchTerms) {
+            $name = strtolower($product->name);
+            $desc = strtolower($product->description);
+            $tags = is_array($product->ai_metadata) ? implode(' ', array_values($product->ai_metadata)) : '';
+            $tags = strtolower($tags);
+
+            foreach ($searchTerms as $st) {
+                if (str_contains($name, $st) || str_contains($desc, $st) || str_contains($tags, $st)) {
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 
     return $items;
@@ -170,6 +193,16 @@ $toggleWishlist = function ($productId) {
             <div class="flex items-center justify-between mb-8">
                 <h2 class="text-2xl font-display font-bold text-white">Latest Assets</h2>
                 <div class="flex items-center gap-4">
+                    @if(!empty($search) && count($expandedTerms) > 1)
+                        <div class="hidden md:block text-sm text-gray-400">
+                            <span class="text-neon-purple">Smart Search:</span>
+                            Found results related to
+                            @foreach(array_slice($expandedTerms, 0, 3) as $term)
+                                <span class="text-gray-300 font-medium">"{{ $term }}"</span>{{ !$loop->last ? ',' : '' }}
+                            @endforeach
+                            @if(count($expandedTerms) > 3) & more... @endif
+                        </div>
+                    @endif
                     <select
                         class="px-4 py-2 bg-surface-elevated border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-neon-purple/50">
                         <option>Most Recent</option>

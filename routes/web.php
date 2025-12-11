@@ -83,7 +83,7 @@ Route::view('/licenses', 'pages.legal.licenses')->name('pages.licenses');
 // Product routes
 // Product routes
 Route::get('/products/{product:slug}', function (\App\Models\Product $product) {
-    $categories = \App\Models\Product::where('is_active', true)->select('type')->distinct()->pluck('type');
+    $categories = \App\Models\Category::where('is_active', true)->orderBy('sort_order')->pluck('name');
     $recentProducts = \App\Models\Product::where('is_active', true)
         ->where('id', '!=', $product->id)
         ->latest()

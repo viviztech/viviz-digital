@@ -78,10 +78,13 @@ class PaymentController extends Controller
             Log::error($e->getTraceAsString());
 
             // ... (keep fallback)
-            if (app()->environment('local')) {
-                // ...
+            if (app()->environment('local') || $order) {
+                // Fallback to allow Wallet payment even if Razorpay fails
                 return view('payment.checkout', [
-                    // ...
+                    'order' => $order,
+                    'razorpayOrderId' => null,
+                    'razorpayKey' => null,
+                    'product' => $product,
                     'walletBalance' => auth()->user()->balance
                 ]);
             }

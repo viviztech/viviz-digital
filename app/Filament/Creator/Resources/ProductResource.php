@@ -71,7 +71,72 @@ class ProductResource extends Resource
 
                         Forms\Components\Textarea::make('description')
                             ->rows(4)
-                            ->maxLength(2000),
+                            ->maxLength(2000)
+                            ->hintAction(
+                                Forms\Components\Actions\Action::make('generateAI')
+                                    ->label('✨ Magic Generate')
+                                    ->color('primary')
+                                    ->action(function (Forms\Set $set, Forms\Get $get) {
+                                        $title = $get('name');
+                                        $imagePath = $get('preview_url'); // Array or string depending on upload state
+                            
+                                        // Handle file upload state (can be temporary array or string path)
+                                        if (is_array($imagePath)) {
+                                            $imagePath = array_values($imagePath)[0] ?? null;
+                                        }
+
+                                        if (!$title) {
+                                            \Filament\Notifications\Notification::make()
+                                                ->title('Missing Title')
+                                                ->body('Please enter a product name first.')
+                                                ->warning()
+                                                ->send();
+                                            return;
+                                        }
+
+                                        \Filament\Notifications\Notification::make()
+                                            ->title('Generating Content...')
+                                            ->body('Consulting Gemini AI. This may take a few seconds.')
+                                            ->info()
+                                            ->send();
+
+                                        try {
+                                            $service = new \App\Services\GeminiService();
+                                            $result = $service->generateProductMetadata($title, $imagePath);
+
+                                            if ($result) {
+                                                $set('description', $result['description']);
+                                                // Convert comma-separated tags to array for KeyValue if needed, 
+                                                // but KeyValue expects Key=>Value. 
+                                                // Let's refactor AI Metadata section to be a TagsInput instead for better AI compatibility.
+                            
+                                                // For now, let's put tags in the AI Metadata KeyValue as "Tag 1" => "value" or similar?
+                                                // Actually, "Tags" field is often better as Spatie Tags or just a TagsInput.
+                                                // Let's assume user wants to put them in the existing KeyValue field.
+                            
+                                                $tags = array_map('trim', explode(',', $result['tags']));
+                                                $formattedTags = [];
+                                                foreach ($tags as $index => $tag) {
+                                                    $formattedTags['Tag ' . ($index + 1)] = $tag;
+                                                }
+                                                $set('ai_metadata', $formattedTags);
+
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Content Generated! 🚀')
+                                                    ->success()
+                                                    ->send();
+                                            } else {
+                                                throw new \Exception('No response from AI');
+                                            }
+                                        } catch (\Exception $e) {
+                                            \Filament\Notifications\Notification::make()
+                                                ->title('Generation Failed')
+                                                ->body($e->getMessage())
+                                                ->danger()
+                                                ->send();
+                                        }
+                                    })
+                            ),
                     ])
                     ->columns(2),
 
@@ -99,7 +164,7 @@ class ProductResource extends Resource
                             ->disk('local')
                             ->directory('assets/products')
                             ->visibility('private')
-                            ->maxSize(512000) // 500MB max for chunked upload
+                            ->maxSize(2097152) // 2GB
                             ->acceptedFileTypes([
                                 'image/jpeg',
                                 'image/png',
@@ -112,7 +177,17 @@ class ProductResource extends Resource
                                 'application/zip',
                                 'application/x-rar-compressed',
                             ])
-                            ->helperText('Supported: JPG, PNG, WebP, MP4, MOV, WebM, MP3, WAV, ZIP, RAR (max 500MB)'),
+                            ->formatStateUsing(function ($state) {
+                                if (empty($state))
+                                    return [];
+                                try {
+                                    $decrypted = \Illuminate\Support\Facades\Crypt::decryptString($state);
+                                    return [$decrypted];
+                                } catch (\Exception $e) {
+                                    return [$state];
+                                }
+                            })
+                            ->helperText('Supported: JPG, PNG, WebP, MP4, MOV, WebM, MP3, WAV, ZIP, RAR (max 2GB)'),
 
                         Forms\Components\FileUpload::make('preview_url')
                             ->label('Preview Image')
@@ -122,7 +197,8 @@ class ProductResource extends Resource
                             ->imageResizeMode('cover')
                             ->imageCropAspectRatio('16:9')
                             ->imageResizeTargetWidth('1920')
-                            ->imageResizeTargetHeight('1080'),
+                            ->imageResizeTargetHeight('1080')
+                            ->formatStateUsing(fn($state) => $state ? [$state] : []),
                     ]),
 
                 Forms\Components\Section::make('AI Metadata')
@@ -211,10 +287,10 @@ class ProductResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('view_stats')
-                    ->label('Stats')
-                    ->icon('heroicon-o-chart-bar')
-                    ->url(fn(Product $record): string => route('filament.creator.resources.products.stats', $record)),
+                // Tables\Actions\Action::make('view_stats')
+                //     ->label('Stats')
+                //     ->icon('heroicon-o-chart-bar')
+                //     ->url(fn(Product $record): string => route('filament.creator.resources.products.stats', $record)),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
